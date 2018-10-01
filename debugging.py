@@ -1,30 +1,44 @@
-##Debug this code to get articles from Buzzfeed
-from flask import Flask, request, render_template 
+from flask import Flask, request, render_template, url_for, redirect
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField, RadioField, ValidationError
+from wtforms.validators import Required
+import requests
 import json
+
 app = Flask(__name__)
-app.debug = True
+app.config['SECRET_KEY'] = 'hard to guess string' # Can be whatever for us, for now; this is what 'seeds' the CSRF protection
+app.debug=True
 
-@app.route('/')
-def hello_to_you():
-    return 'Hello!'
+API_KEY = 'f37d2a49b946d808bffe304d318c2ab'
 
-class buzzForm():
-    pass
+class = weatherForm(FlaskForm):
+    zip_code = IntegerField("Enter a US zipcode", validators=[Required()])
+    submit = SubmitField("Submit")
 
-@app.route("/buzzfeed")
-def buzzfeed():
-    form = buzzForm()
-    render_template('buzzfeed.html')
+    def validate_zipcode(self, field):
+        if len(str(field.data)) != 5:
+            raise ValidationError('Please enter a 5 digit zipcode')
 
+@app.route('/zipcode', methods=["GET","POST"])
+def zip_form():
+    form = weatherForm()
+    if form.validate_on_submit():
+        zipcode = str(form.zipcode.data)
+        params = {}
+        params['zip'] = zipcode + ",us"
+        params['appid'] = 'f37d2a49b946d808bffe304d318c2ab'
+        baseurl = 'http://api.openweathermap.org/data/2.5/weather?'
+        resp = requests.get(baseurl, params=params)
+        resp_dict = json.loads(resp.text)
+        print(resp_dict)
 
-@app.route("/buzzfeed_articles")
-def buzzfeed_articles():
-    response_dict = {}
-    final_response_dict = {}
-    baseurl = "https://www.buzzfeed.com/api/v2/feeds/"
+        description = resp_dict['weather'][0]['description']
+        city = resp_dict['name']
+        temperature_kelvin = resp_dict['main']['temp']
 
-
-    render_template('article_links.html')
+        return render_template('results.html', city=city, description=description, temperature=temperature_kelvin)
+    flash(form.errors)
+    return render_template('weather_form.html'), form = form
 
 if __name__ == '__main__':
-    app.run()
+    app.run(use_reloader=True,debug=True)
